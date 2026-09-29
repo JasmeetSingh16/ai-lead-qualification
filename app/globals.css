@@ -1,8 +1,9 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+  --background: #f7f8fb;
+  --foreground: #0f1830;
 }
 
 @theme inline {
@@ -12,15 +13,274 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ------------------------------------------------------------------ */
+/* Lead Qualification — page-specific pieces on top of the Jaseir kit  */
+/* (styles/jaseir-kit.css). Colours come from the --agent-* variables. */
+/* ------------------------------------------------------------------ */
+
+/* Hero illustration */
+.lq-hero-card {
+  position: relative;
+  max-width: 520px;
+  margin-inline: auto;
+}
+
+.lq-hero-card .jk-card {
+  box-shadow: var(--jk-shadow-lg);
+}
+
+.lq-avatar {
+  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--agent-accent-soft);
+  color: var(--agent-accent-ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.lq-pill {
+  flex: none;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--agent-accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.lq-float {
+  position: absolute;
+  bottom: -18px;
+  left: -14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px;
+  border: 1px solid var(--jk-line);
+  border-radius: 12px;
+  background: var(--jk-surface);
+  color: var(--jk-ink);
+  font-size: 13.5px;
+  font-weight: 600;
+  box-shadow: var(--jk-shadow);
+}
+
+.lq-float svg {
+  color: var(--agent-accent);
+}
+
+@media (max-width: 639px) {
+  .lq-float {
+    left: 12px;
+  }
+}
+
+/* Form */
+.lq-form {
+  display: grid;
+}
+
+.lq-pane {
+  display: grid;
+  min-width: 0;
+  margin: 0;
+  padding: 24px 20px;
+  border: 0;
+  align-content: start;
+  gap: 18px;
+}
+
+.lq-pane + .lq-pane {
+  border-top: 1px solid var(--jk-line);
+}
+
+.lq-pane--need {
+  background: linear-gradient(180deg, var(--agent-accent-soft), transparent 70%);
+}
+
+.lq-legend {
+  display: flex;
+  flex-wrap: wrap;
+  float: left;
+  width: 100%;
+  margin-bottom: 4px;
+  align-items: center;
+  gap: 10px;
+  color: var(--jk-ink);
+  font-size: 1.125rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.lq-legend + * {
+  clear: both;
+}
+
+.lq-step {
+  display: inline-flex;
+  width: 26px;
+  height: 26px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--agent-accent);
+  color: #fff;
+  font-family: var(--jk-mono);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.lq-sample-tag {
+  padding: 3px 10px;
+  border: 1px solid var(--agent-accent-line);
+  border-radius: 999px;
+  background: var(--agent-accent-soft);
+  color: var(--agent-accent-ink);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+@media (min-width: 768px) {
+  .lq-pane {
+    padding: 32px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .lq-form {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  }
+
+  .lq-pane + .lq-pane {
+    border-top: 0;
+    border-left: 1px solid var(--jk-line);
+  }
+
+  .lq-pane--need {
+    border-radius: 0 var(--jk-radius-lg) var(--jk-radius-lg) 0;
+  }
+}
+
+/* Output */
+.lq-output {
+  margin-top: 24px;
+  scroll-margin-top: calc(var(--jk-header-h) + 16px);
+}
+
+.lq-report-head {
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.lq-report-title {
+  margin-top: 6px;
+  color: var(--jk-ink);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.lq-report-title span {
+  color: var(--jk-muted);
+  font-weight: 500;
+}
+
+.lq-priority {
+  display: inline-flex;
+  margin-top: 10px;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.lq-priority span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.lq-priority--high {
+  background: var(--agent-accent-soft);
+  color: var(--agent-accent-ink);
+}
+
+.lq-priority--medium {
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.lq-priority--low {
+  background: var(--jk-surface-2);
+  color: var(--jk-body);
+}
+
+.lq-action {
+  padding: 16px;
+  border: 1px solid var(--agent-accent-line);
+  border-radius: 14px;
+  background: var(--agent-accent-soft);
+}
+
+.lq-finding-icon {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+}
+
+.lq-finding-icon--positive {
+  background: var(--agent-accent-soft);
+  color: var(--agent-accent);
+}
+
+.lq-finding-icon--warning {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.lq-brief {
+  padding: 28px;
+  border-radius: var(--jk-radius-lg);
+  background: var(--agent-accent-ink);
+  color: #ecfdf5;
+}
+
+.lq-brief-label {
+  color: var(--agent-accent-bright);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.lq-reply {
+  margin: 18px 0 0;
+  padding: 4px 0 4px 18px;
+  border-left: 3px solid var(--agent-accent);
+  color: var(--jk-body);
+  font-size: 15.5px;
+  line-height: 1.7;
+  white-space: pre-line;
 }
