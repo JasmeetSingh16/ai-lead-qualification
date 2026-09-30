@@ -14,7 +14,7 @@ import {
 import { FormEvent, useRef, useState } from "react";
 import { EmptyPreview, WorkspaceSection } from "../components/agent/AgentTemplate";
 import { CopyButton, LoadingSteps, ScoreBar, ScoreGauge } from "../components/agent/AgentUi";
-import ReportGate, { ReportCta } from "../components/agent/ReportGate";
+import ReportGate, { GoogleReturn, ReportCta } from "../components/agent/ReportGate";
 import type { ReportGateInfo } from "../lib/lead-gate";
 import { emptyForm, exampleResult, sampleLeads, type LeadForm, type Result } from "./lead-samples";
 import { inputOf, previewOf, summaryOf } from "./report-gate";
@@ -210,6 +210,23 @@ export default function LeadQualifier() {
       <p className="jk-sr" role="status">
         {result && !loading ? "Report ready." : ""}
       </p>
+
+      {/* Back from "Continue with Google": unlock the saved report. */}
+
+      <GoogleReturn
+
+        agent="lead-qualification"
+
+        onFull={(full) => {
+
+          setResult(full as Result);
+
+          setGate(null);
+
+        }}
+
+      />
+
 
       <div ref={outputRef} className="lq-output">
         {loading ? (
