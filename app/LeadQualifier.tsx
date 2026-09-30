@@ -287,8 +287,8 @@ const priorityClass: Record<string, string> = {
 };
 
 /**
- * part: "all" = the full report; "preview" = what shows before the email
- * form (score, diagnosis, first findings); "locked" = the rest.
+ * part: "all" = the full report; "preview" = before the email form (just
+ * the lead's name); "locked" = everything else, blurred behind the form.
  */
 function LeadReport({
   result,
@@ -429,9 +429,9 @@ function LeadReport({
   return (
     <article className="lq-report" aria-label="Lead qualification report">
       {part !== "locked" && header}
-      {part !== "locked" && scoreAndDiagnosis}
+      {part !== "preview" && scoreAndDiagnosis}
       {part !== "preview" && breakdownSection}
-      {part !== "locked" && signalsAndConcerns}
+      {part !== "preview" && signalsAndConcerns}
       {part !== "preview" && briefAndReply}
       {part === "all" && (
         <p className="jk-fineprint mx-auto mt-6 max-w-2xl text-center">

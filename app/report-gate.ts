@@ -6,18 +6,31 @@
 
 import type { LeadForm, Result } from "./lead-samples";
 
-/** Score, diagnosis and actions, plus the first two signals and first concern. */
+/** Nothing but empty fields — the whole report is locked until the form is sent. */
 export function previewOf(result: Result): Result {
   return {
     ...result,
-    buying_signals: result.buying_signals.slice(0, 2),
-    concerns: result.concerns.slice(0, 1),
+    score: 0,
+    qualification: "",
+    status: "",
+    priority: "",
+    summary: "",
+    fit: 0,
+    need: 0,
+    budget: 0,
+    timeline: 0,
+    authority: 0,
+    intent: 0,
     fit_evidence: "",
     need_evidence: "",
     budget_evidence: "",
     timeline_evidence: "",
     authority_evidence: "",
     intent_evidence: "",
+    buying_signals: [],
+    concerns: [],
+    recommended_action: "",
+    next_best_action: "",
     sales_brief: "",
     suggested_response: "",
   };
