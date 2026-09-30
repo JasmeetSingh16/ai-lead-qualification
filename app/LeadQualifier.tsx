@@ -14,7 +14,10 @@ import {
 import { FormEvent, useRef, useState } from "react";
 import { EmptyPreview, WorkspaceSection } from "../components/agent/AgentTemplate";
 import { CopyButton, LoadingSteps, ScoreBar, ScoreGauge } from "../components/agent/AgentUi";
+import ReportGate, { ReportCta } from "../components/agent/ReportGate";
+import type { ReportGateInfo } from "../lib/lead-gate";
 import { emptyForm, exampleResult, sampleLeads, type LeadForm, type Result } from "./lead-samples";
+import { inputOf, previewOf, summaryOf } from "./report-gate";
 
 const fields = [
   ["name", "Lead name", "e.g. Sarah Johnson"],
@@ -33,6 +36,10 @@ export default function LeadQualifier() {
   const [form, setForm] = useState<LeadForm>(emptyForm);
 
   const [result, setResult] = useState<Result | null>(null);
+  // Set while the full report is locked behind the email form.
+  const [gate, setGate] = useState<ReportGateInfo | null>(null);
+  // The form as it was submitted (the fields stay editable afterwards).
+  const [submitted, setSubmitted] = useState<LeadForm>(emptyForm);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -84,7 +91,10 @@ export default function LeadQualifier() {
         throw new Error(data.error || "Something went wrong.");
       }
 
-      setResult(data);
+      const { gate: gateInfo, ...report } = data as Result & { gate?: ReportGateInfo | null };
+      setResult(report);
+      setGate(gateInfo ?? null);
+      setSubmitted(form);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to qualify this lead.");
       formRef.current?.scrollIntoView({ block: "start" });
@@ -95,6 +105,7 @@ export default function LeadQualifier() {
 
   function reset() {
     setResult(null);
+    setGate(null);
     setError("");
     formRef.current?.scrollIntoView({ block: "start" });
   }
@@ -206,7 +217,32 @@ export default function LeadQualifier() {
             <LoadingSteps steps={LOADING_STEPS} />
           </div>
         ) : result ? (
-          <LeadReport result={result} leadName={form.name} company={form.company} onReset={reset} />
+          <>
+            <LeadReport
+              result={gate ? previewOf(result) : result}
+              leadName={submitted.name}
+              company={submitted.company}
+              onReset={reset}
+              part={gate ? "preview" : "all"}
+            />
+            {gate ? (
+              <ReportGate
+                agent="lead-qualification"
+                gate={gate}
+                input={inputOf(submitted)}
+                summary={summaryOf(result)}
+                onUnlock={(full) => {
+                  if (full) setResult(full as Result);
+                  setGate(null);
+                }}
+              >
+                {/* Sealed reports aren't in the page yet: blur the example's sections instead. */}
+                <LeadReport result={gate.token ? exampleResult : result} leadName="" company="" part="locked" />
+              </ReportGate>
+            ) : (
+              <ReportCta />
+            )}
+          </>
         ) : (
           <EmptyPreview
             title="Your report appears here"
@@ -250,16 +286,22 @@ const priorityClass: Record<string, string> = {
   Low: "lq-priority--low",
 };
 
+/**
+ * part: "all" = the full report; "preview" = what shows before the email
+ * form (score, diagnosis, first findings); "locked" = the rest.
+ */
 function LeadReport({
   result,
   leadName,
   company,
   onReset,
+  part = "all",
 }: {
   result: Result;
   leadName: string;
   company: string;
   onReset?: () => void;
+  part?: "all" | "preview" | "locked";
 }) {
   const score = Math.round(result.score);
 
@@ -272,118 +314,131 @@ function LeadReport({
     ["Buying intent", result.intent, 10, result.intent_evidence],
   ] as const;
 
-  return (
-    <article className="lq-report" aria-label="Lead qualification report">
-      <header className="lq-report-head">
-        <div>
-          <p className="jk-eyebrow">Qualification report</p>
-          <h3 className="lq-report-title">
-            {leadName || "Unnamed lead"}
-            {company && <span> · {company}</span>}
-          </h3>
-        </div>
-        {onReset && (
-          <div className="flex flex-wrap gap-2">
-            <CopyButton text={reportAsText(result, leadName, company)} label="Copy report" />
-            <button type="button" className="jk-copy" onClick={onReset}>
-              <RotateCcw size={15} aria-hidden="true" />
-              Qualify another lead
-            </button>
-          </div>
-        )}
-      </header>
-
-      {/* Score + diagnosis */}
-      <div className="grid gap-4 lg:grid-cols-[340px_1fr]">
-        <section className="jk-card jk-card-pad flex flex-col items-center text-center" aria-label="Score">
-          <p className="jk-label-sm self-start">Qualification score</p>
-          <div className="mt-4">
-            <ScoreGauge value={score} label="out of 100" size={196} />
-          </div>
-          <p className="mt-2 text-2xl font-bold tracking-tight text-[var(--jk-ink)]">{result.qualification}</p>
-          <p className={`lq-priority ${priorityClass[result.priority] ?? "lq-priority--low"}`}>
-            <span aria-hidden="true" />
-            {result.priority} priority
-          </p>
-        </section>
-
-        <section className="jk-card jk-card-pad" aria-label="Diagnosis">
-          <p className="jk-label-sm">AI diagnosis</p>
-          <p className="mt-2 text-2xl font-bold tracking-tight text-[var(--jk-ink)]">{result.status}</p>
-          <p className="mt-4 max-w-2xl text-[1.0625rem] leading-7 text-[var(--jk-body)]">{result.summary}</p>
-
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            <ActionCard icon={Target} label="Recommended action" value={result.recommended_action} />
-            <ActionCard icon={ArrowRight} label="Next best action" value={result.next_best_action} />
-          </div>
-        </section>
+  const header = (
+    <header className="lq-report-head">
+      <div>
+        <p className="jk-eyebrow">Qualification report</p>
+        <h3 className="lq-report-title">
+          {leadName || "Unnamed lead"}
+          {company && <span> · {company}</span>}
+        </h3>
       </div>
+      {onReset && (
+        <div className="flex flex-wrap gap-2">
+          {part === "all" && <CopyButton text={reportAsText(result, leadName, company)} label="Copy report" />}
+          <button type="button" className="jk-copy" onClick={onReset}>
+            <RotateCcw size={15} aria-hidden="true" />
+            Qualify another lead
+          </button>
+        </div>
+      )}
+    </header>
+  );
 
-      {/* Breakdown */}
-      <section className="jk-card jk-card-pad mt-4" aria-labelledby="lq-breakdown">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h4 id="lq-breakdown" className="text-xl font-bold tracking-tight text-[var(--jk-ink)]">
-            Why this lead scored {score}
-          </h4>
-          <p className="jk-hint">Six criteria · 100 points</p>
+  const scoreAndDiagnosis = (
+    <div className="grid gap-4 lg:grid-cols-[340px_1fr]">
+      <section className="jk-card jk-card-pad flex flex-col items-center text-center" aria-label="Score">
+        <p className="jk-label-sm self-start">Qualification score</p>
+        <div className="mt-4">
+          <ScoreGauge value={score} label="out of 100" size={196} />
         </div>
-        <div className="mt-6 grid gap-x-10 gap-y-7 md:grid-cols-2">
-          {breakdown.map(([label, value, max, evidence]) => (
-            <ScoreBar key={label} label={label} value={value} max={max}>
-              {evidence}
-            </ScoreBar>
-          ))}
-        </div>
+        <p className="mt-2 text-2xl font-bold tracking-tight text-[var(--jk-ink)]">{result.qualification}</p>
+        <p className={`lq-priority ${priorityClass[result.priority] ?? "lq-priority--low"}`}>
+          <span aria-hidden="true" />
+          {result.priority} priority
+        </p>
       </section>
 
-      {/* Signals + concerns */}
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <FindingList
-          title="Buying signals"
-          icon={TrendingUp}
-          tone="positive"
-          items={result.buying_signals}
-          empty="No strong buying signals were identified from the available information."
-        />
-        <FindingList
-          title="Concerns to check"
-          icon={TriangleAlert}
-          tone="warning"
-          items={result.concerns}
-          empty="No significant concerns were identified from the available information."
-        />
-      </div>
+      <section className="jk-card jk-card-pad" aria-label="Diagnosis">
+        <p className="jk-label-sm">AI diagnosis</p>
+        <p className="mt-2 text-2xl font-bold tracking-tight text-[var(--jk-ink)]">{result.status}</p>
+        <p className="mt-4 max-w-2xl text-[1.0625rem] leading-7 text-[var(--jk-body)]">{result.summary}</p>
 
-      {/* Brief + reply */}
-      <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1.2fr]">
-        <section className="lq-brief" aria-labelledby="lq-brief-title">
-          <div className="flex items-center gap-2">
-            <FileText size={18} aria-hidden="true" />
-            <h4 id="lq-brief-title" className="lq-brief-label">
-              Sales brief
+        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          <ActionCard icon={Target} label="Recommended action" value={result.recommended_action} />
+          <ActionCard icon={ArrowRight} label="Next best action" value={result.next_best_action} />
+        </div>
+      </section>
+    </div>
+  );
+
+  const breakdownSection = (
+    <section className="jk-card jk-card-pad mt-4" aria-labelledby="lq-breakdown">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h4 id="lq-breakdown" className="text-xl font-bold tracking-tight text-[var(--jk-ink)]">
+          Why this lead scored {score}
+        </h4>
+        <p className="jk-hint">Six criteria · 100 points</p>
+      </div>
+      <div className="mt-6 grid gap-x-10 gap-y-7 md:grid-cols-2">
+        {breakdown.map(([label, value, max, evidence]) => (
+          <ScoreBar key={label} label={label} value={value} max={max}>
+            {evidence}
+          </ScoreBar>
+        ))}
+      </div>
+    </section>
+  );
+
+  const signalsAndConcerns = (
+    <div className="mt-4 grid gap-4 lg:grid-cols-2">
+      <FindingList
+        title="Buying signals"
+        icon={TrendingUp}
+        tone="positive"
+        items={result.buying_signals}
+        empty="No strong buying signals were identified from the available information."
+      />
+      <FindingList
+        title="Concerns to check"
+        icon={TriangleAlert}
+        tone="warning"
+        items={result.concerns}
+        empty="No significant concerns were identified from the available information."
+      />
+    </div>
+  );
+
+  const briefAndReply = (
+    <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1.2fr]">
+      <section className="lq-brief" aria-labelledby="lq-brief-title">
+        <div className="flex items-center gap-2">
+          <FileText size={18} aria-hidden="true" />
+          <h4 id="lq-brief-title" className="lq-brief-label">
+            Sales brief
+          </h4>
+        </div>
+        <p className="mt-4 text-[1.0625rem] leading-7">{result.sales_brief}</p>
+      </section>
+
+      <section className="jk-card jk-card-pad" aria-labelledby="lq-reply-title">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-[var(--jk-ink)]">
+            <MessageSquareText size={18} aria-hidden="true" className="text-[var(--agent-accent)]" />
+            <h4 id="lq-reply-title" className="text-base font-bold">
+              Suggested reply
             </h4>
           </div>
-          <p className="mt-4 text-[1.0625rem] leading-7">{result.sales_brief}</p>
-        </section>
+          <CopyButton text={result.suggested_response} label="Copy reply" />
+        </div>
+        <blockquote className="lq-reply">{result.suggested_response}</blockquote>
+      </section>
+    </div>
+  );
 
-        <section className="jk-card jk-card-pad" aria-labelledby="lq-reply-title">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-[var(--jk-ink)]">
-              <MessageSquareText size={18} aria-hidden="true" className="text-[var(--agent-accent)]" />
-              <h4 id="lq-reply-title" className="text-base font-bold">
-                Suggested reply
-              </h4>
-            </div>
-            <CopyButton text={result.suggested_response} label="Copy reply" />
-          </div>
-          <blockquote className="lq-reply">{result.suggested_response}</blockquote>
-        </section>
-      </div>
-
-      <p className="jk-fineprint mx-auto mt-6 max-w-2xl text-center">
-        This report is AI-generated from the information provided. It is a sales-assistance tool, not a prediction of
-        whether a lead will buy.
-      </p>
+  return (
+    <article className="lq-report" aria-label="Lead qualification report">
+      {part !== "locked" && header}
+      {part !== "locked" && scoreAndDiagnosis}
+      {part !== "preview" && breakdownSection}
+      {part !== "locked" && signalsAndConcerns}
+      {part !== "preview" && briefAndReply}
+      {part === "all" && (
+        <p className="jk-fineprint mx-auto mt-6 max-w-2xl text-center">
+          This report is AI-generated from the information provided. It is a sales-assistance tool, not a prediction of
+          whether a lead will buy.
+        </p>
+      )}
     </article>
   );
 }

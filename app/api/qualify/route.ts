@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
+import { gateReport } from "../../../lib/report-gate";
+import type { Result } from "../../lead-samples";
+import { inputOf, previewOf, summaryOf } from "../../report-gate";
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
@@ -539,9 +542,17 @@ ${leadInformation}
       : [];
 
     /**
-     * Return the final result.
+     * Return a preview plus the sealed full report (see lib/report-gate.ts).
      */
-    return NextResponse.json(result);
+    return NextResponse.json(
+      gateReport({
+        agent: "lead-qualification",
+        input: inputOf(body),
+        summary: summaryOf(result as Result),
+        full: result as Result,
+        preview: previewOf(result as Result),
+      })
+    );
   } catch (error) {
     console.error(
       "Lead qualification error:",
